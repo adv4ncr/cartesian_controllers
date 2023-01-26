@@ -43,7 +43,8 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include <cartesian_controller_base/ROS2VersionConfig.h>
 #include <cartesian_controller_base/cartesian_controller_base.h>
-#include <controller_interface/controller_interface.hpp>
+//#include <controller_interface/controller_interface.hpp>
+#include <controller_interface/chainable_controller_interface.hpp>
 
 namespace cartesian_motion_controller
 {
@@ -91,16 +92,21 @@ class CartesianMotionController : public virtual cartesian_controller_base::Cart
     rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_deactivate(
         const rclcpp_lifecycle::State & previous_state) override;
 
+// Chained controller functions
 #if defined CARTESIAN_CONTROLLERS_GALACTIC || defined CARTESIAN_CONTROLLERS_HUMBLE
-    controller_interface::return_type update(const rclcpp::Time & time, const rclcpp::Duration & period) override;
+    controller_interface::return_type update_and_write_commands(const rclcpp::Time & time, const rclcpp::Duration & period) override;
 #elif defined CARTESIAN_CONTROLLERS_FOXY
-    controller_interface::return_type update() override;
+    controller_interface::return_type update_and_write_commands() override;
 #endif
 
     using Base = cartesian_controller_base::CartesianControllerBase;
 
-
   protected:
+
+    bool on_set_chained_mode(bool chained_mode) override;
+    //std::vector<hardware_interface::CommandInterface> on_export_reference_interfaces() override;
+    controller_interface::return_type update_reference_from_subscribers() override;
+
     /**
      * @brief Compute the offset between a target pose and the current end effector pose
      *

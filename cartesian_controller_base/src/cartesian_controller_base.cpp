@@ -58,6 +58,7 @@ CartesianControllerBase::CartesianControllerBase()
 
 controller_interface::InterfaceConfiguration CartesianControllerBase::command_interface_configuration() const
 {
+  RCLCPP_WARN(get_node()->get_logger(), "[BASE][command_interface_configuration] entry");
   controller_interface::InterfaceConfiguration conf;
   conf.type = controller_interface::interface_configuration_type::INDIVIDUAL;
   conf.names.reserve(m_joint_names.size() * m_cmd_interface_types.size());
@@ -73,6 +74,7 @@ controller_interface::InterfaceConfiguration CartesianControllerBase::command_in
 
 controller_interface::InterfaceConfiguration CartesianControllerBase::state_interface_configuration() const
 {
+  RCLCPP_WARN(get_node()->get_logger(), "[BASE][state_interface_configuration] entry");
   controller_interface::InterfaceConfiguration conf;
   conf.type = controller_interface::interface_configuration_type::INDIVIDUAL;
   conf.names.reserve(m_joint_names.size()); // Only position
@@ -86,6 +88,7 @@ controller_interface::InterfaceConfiguration CartesianControllerBase::state_inte
 #if defined CARTESIAN_CONTROLLERS_GALACTIC || defined CARTESIAN_CONTROLLERS_HUMBLE
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn CartesianControllerBase::on_init()
 {
+  RCLCPP_WARN(get_node()->get_logger(), "[BASE][on_init] entry");
   if (!m_initialized)
   {
     auto_declare<std::string>("ik_solver", "forward_dynamics");
@@ -131,6 +134,7 @@ controller_interface::return_type CartesianControllerBase::init(const std::strin
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn CartesianControllerBase::on_configure(
     const rclcpp_lifecycle::State & previous_state)
 {
+  RCLCPP_WARN(get_node()->get_logger(), "[BASE][on_configure] entry");
   if (m_configured)
   {
     return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
@@ -332,6 +336,52 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Cartes
   m_active = true;
   return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
+
+// --------- ChainableControllerInterface functions ---------
+
+std::vector<hardware_interface::CommandInterface> CartesianControllerBase::on_export_reference_interfaces()
+{
+  std::vector<hardware_interface::CommandInterface> chainable_command_interfaces;
+
+  // Get required size of vector
+  const unsigned short num_chainable_interfaces = m_joint_names.size() * m_cmd_interface_types.size();
+  RCLCPP_WARN(get_node()->get_logger(), "[BASE][on_export_reference_interfaces] num_chainable_interfaces: %hd", num_chainable_interfaces);
+
+  // allocate dynamic memory
+  chainable_command_interfaces.reserve(num_chainable_interfaces);
+  reference_interfaces_.resize(num_chainable_interfaces, std::numeric_limits<double>::quiet_NaN());
+  position_reference_ = {};
+  //velocity_reference_ = {};
+
+  // assign reference interfaces
+  uint8_t index = 0;
+  for (const auto & interface : m_cmd_interface_types)
+  {
+    for (const auto & joint : m_joint_names)
+    {
+      if (interface == hardware_interface::HW_IF_POSITION)
+        position_reference_.emplace_back(reference_interfaces_[index]);
+      else if (interface == hardware_interface::HW_IF_VELOCITY)
+      {
+        velocity_reference_.emplace_back(reference_interfaces_[index]);
+      }
+      const auto full_name = joint + "/" + interface;
+      RCLCPP_WARN(get_node()->get_logger(), "[BASE][on_export_reference_interfaces] full_name: %s", full_name.c_str());
+
+      chainable_command_interfaces.emplace_back(hardware_interface::CommandInterface(
+        std::string(get_node()->get_name()), full_name, reference_interfaces_.data() + index));
+
+      index++;
+    }
+  }
+
+  return chainable_command_interfaces;
+
+}
+
+
+// ----------------------------------------------------------
+
 
 void CartesianControllerBase::writeJointControlCmds()
 {

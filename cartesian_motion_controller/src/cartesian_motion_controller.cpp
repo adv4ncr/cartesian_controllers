@@ -117,10 +117,10 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Cartes
 }
 
 #if defined CARTESIAN_CONTROLLERS_GALACTIC || defined CARTESIAN_CONTROLLERS_HUMBLE
-controller_interface::return_type CartesianMotionController::update(const rclcpp::Time& time,
+controller_interface::return_type CartesianMotionController::update_and_write_commands(const rclcpp::Time& time,
                                                                    const rclcpp::Duration& period)
 #elif defined CARTESIAN_CONTROLLERS_FOXY
-controller_interface::return_type CartesianMotionController::update()
+controller_interface::return_type CartesianMotionController::update_and_write_commands()
 #endif
 {
   // Synchronize the internal model and the real robot
@@ -217,9 +217,23 @@ void CartesianMotionController::targetFrameCallback(const geometry_msgs::msg::Po
         target->pose.position.z));
 }
 
+// Chainable controller functions
+
+bool CartesianMotionController::on_set_chained_mode(bool chained_mode)
+{
+  RCLCPP_WARN(get_node()->get_logger(), "[MOTION][on_set_chained_mode] Chained mode: %s", chained_mode ? "true" : "false");
+
+  return true;
+}
+
+controller_interface::return_type CartesianMotionController::update_reference_from_subscribers()
+{
+  return controller_interface::return_type::OK;
+}
+
 } // namespace
 
 // Pluginlib
 #include <pluginlib/class_list_macros.hpp>
 
-PLUGINLIB_EXPORT_CLASS(cartesian_motion_controller::CartesianMotionController, controller_interface::ControllerInterface)
+PLUGINLIB_EXPORT_CLASS(cartesian_motion_controller::CartesianMotionController, controller_interface::ChainableControllerInterface)

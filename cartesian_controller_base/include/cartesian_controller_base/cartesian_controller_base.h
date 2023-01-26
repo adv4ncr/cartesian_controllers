@@ -45,7 +45,8 @@
 #include <cartesian_controller_base/IKSolver.h>
 #include <cartesian_controller_base/SpatialPDController.h>
 #include <cartesian_controller_base/Utility.h>
-#include <controller_interface/controller_interface.hpp>
+//#include <controller_interface/controller_interface.hpp>
+#include <controller_interface/chainable_controller_interface.hpp>
 #include <functional>
 #include <geometry_msgs/msg/wrench_stamped.hpp>
 #include <hardware_interface/loaned_command_interface.hpp>
@@ -57,6 +58,7 @@
 #include <string>
 #include <trajectory_msgs/msg/joint_trajectory_point.hpp>
 #include <vector>
+#include <hardware_interface/types/hardware_interface_type_values.hpp>
 
 namespace cartesian_controller_base
 {
@@ -71,7 +73,7 @@ namespace cartesian_controller_base
  * writeJointControlCmds.
  *
  */
-class CartesianControllerBase : public controller_interface::ControllerInterface
+class CartesianControllerBase : public controller_interface::ChainableControllerInterface
 {
   public:
     CartesianControllerBase();
@@ -184,6 +186,14 @@ class CartesianControllerBase : public controller_interface::ControllerInterface
     std::vector<std::reference_wrapper<hardware_interface::LoanedStateInterface> >
       m_joint_state_pos_handles;
 
+    // --------- ChainableControllerInterface functions & variables ---------
+    std::vector<hardware_interface::CommandInterface> on_export_reference_interfaces() override;
+
+    // internal reference values
+    std::vector<std::reference_wrapper<double>> position_reference_;
+    std::vector<std::reference_wrapper<double>> velocity_reference_;
+    
+    // ----------------------------------------------------------------------
   private:
     std::vector<std::string> m_cmd_interface_types;
     std::vector<std::reference_wrapper<hardware_interface::LoanedCommandInterface>> m_joint_cmd_pos_handles;
