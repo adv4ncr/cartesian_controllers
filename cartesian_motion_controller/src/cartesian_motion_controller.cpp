@@ -79,13 +79,15 @@ controller_interface::return_type CartesianMotionController::init(const std::str
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn CartesianMotionController::on_configure(
     const rclcpp_lifecycle::State & previous_state)
 {
+  RCLCPP_WARN(get_node()->get_logger(), "[MOTION][on_configure] entry");
+
   const auto ret = Base::on_configure(previous_state);
   if (ret != rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS)
   {
     return ret;
   }
 
-  m_target_frame_subscr = get_node()->create_subscription<geometry_msgs::msg::PoseStamped>(
+  m_target_frame_subscr = get_node()->create_subscription<CmdType>(
     get_node()->get_name() + std::string("/target_frame"),
     3,
     std::bind(&CartesianMotionController::targetFrameCallback, this, std::placeholders::_1));
@@ -96,7 +98,13 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Cartes
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn CartesianMotionController::on_activate(
     const rclcpp_lifecycle::State & previous_state)
 {
+  RCLCPP_WARN(get_node()->get_logger(), "[MOTION][on_activate] entry");
+
   Base::on_activate(previous_state);
+
+  // reset command buffer if a command came through callback when controller was inactive
+  m_target_frame_buffer = realtime_tools::RealtimeBuffer<std::shared_ptr<CmdType>>(nullptr);
+
 
   // Reset simulation with real joint state
   m_current_frame = Base::m_ik_solver->getEndEffectorPose();
@@ -109,6 +117,10 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Cartes
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn CartesianMotionController::on_deactivate(
     const rclcpp_lifecycle::State & previous_state)
 {
+  RCLCPP_WARN(get_node()->get_logger(), "[MOTION][on_deactivate] entry");
+
+  _initPos = false; //TEST
+  
   // Stop drifting by sending zero joint velocities
   Base::computeJointControlCmds(ctrl::Vector6D::Zero(), rclcpp::Duration::from_seconds(0));
   Base::writeJointControlCmds();
@@ -123,6 +135,44 @@ controller_interface::return_type CartesianMotionController::update(const rclcpp
 controller_interface::return_type CartesianMotionController::update()
 #endif
 {
+  // Get new pose from subscriber
+  const auto _target = m_target_frame_buffer.readFromRT();
+  
+  // No command received yet
+  if (!_target || !(*_target))
+  {
+    RCLCPP_WARN(get_node()->get_logger(), "[MOTION][update] no command received yet");
+    return controller_interface::return_type::OK;
+  }
+
+  // ------------ TEST ------------
+  if(!_initPos)
+  {
+    _startPos.pose = (*_target)->pose;
+    _initPos = true;
+  }
+
+  if((*_target)->pose.position.x != _startPos.pose.position.x)
+  {
+    RCLCPP_WARN(get_node()->get_logger(), "[MOTION][update] soll: %f ist: %f", 
+    _startPos.pose.position.x,
+    (*_target)->pose.position.x
+    );
+  }
+  _startPos.pose.position.x += 0.01;
+  // ------------------------------
+
+  m_target_frame = KDL::Frame(
+      KDL::Rotation::Quaternion(
+        (*_target)->pose.orientation.x,
+        (*_target)->pose.orientation.y,
+        (*_target)->pose.orientation.z,
+        (*_target)->pose.orientation.w),
+      KDL::Vector(
+        (*_target)->pose.position.x,
+        (*_target)->pose.position.y,
+        (*_target)->pose.position.z));
+
   // Synchronize the internal model and the real robot
   Base::m_ik_solver->synchronizeJointPositions(Base::m_joint_state_pos_handles);
 
@@ -192,6 +242,8 @@ computeMotionError()
   return error;
 }
 
+
+
 void CartesianMotionController::targetFrameCallback(const geometry_msgs::msg::PoseStamped::SharedPtr target)
 {
   if (target->header.frame_id != Base::m_robot_base_link)
@@ -205,18 +257,8 @@ void CartesianMotionController::targetFrameCallback(const geometry_msgs::msg::Po
     return;
   }
 
-  m_target_frame = KDL::Frame(
-      KDL::Rotation::Quaternion(
-        target->pose.orientation.x,
-        target->pose.orientation.y,
-        target->pose.orientation.z,
-        target->pose.orientation.w),
-      KDL::Vector(
-        target->pose.position.x,
-        target->pose.position.y,
-        target->pose.position.z));
+  m_target_frame_buffer.writeFromNonRT(target);
 }
-
 } // namespace
 
 // Pluginlib

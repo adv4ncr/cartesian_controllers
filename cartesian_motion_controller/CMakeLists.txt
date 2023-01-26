@@ -65,6 +65,11 @@ install(
 )
 
 install(
+  DIRECTORY launch config
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(
   TARGETS ${PROJECT_NAME}
   #EXPORT my_targets_from_this_package
   LIBRARY DESTINATION lib

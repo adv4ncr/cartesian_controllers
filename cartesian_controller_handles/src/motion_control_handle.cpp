@@ -70,6 +70,7 @@ MotionControlHandle::on_activate(const rclcpp_lifecycle::State& previous_state)
   }
 
   m_current_pose = getEndEffectorPose();
+  _myPose = m_current_pose; // TEST
   m_server->setPose(m_marker.name, m_current_pose.pose);
   m_server->applyChanges();
   return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
@@ -93,7 +94,11 @@ controller_interface::return_type MotionControlHandle::update()
   // Publish marker pose
   m_current_pose.header.stamp    = get_node()->now();
   m_current_pose.header.frame_id = m_robot_base_link;
-  m_pose_publisher->publish(m_current_pose);
+  _myPose.header.stamp = get_node()->now(); // TEST
+  _myPose.header.frame_id = m_robot_base_link;  // TEST
+  _myPose.pose.position.x += 0.01;  // TEST
+
+  m_pose_publisher->publish(_myPose); // TEST
   m_server->applyChanges();
 
   return controller_interface::return_type::OK;

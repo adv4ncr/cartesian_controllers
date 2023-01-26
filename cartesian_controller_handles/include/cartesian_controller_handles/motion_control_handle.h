@@ -177,6 +177,9 @@ class MotionControlHandle : public controller_interface::ControllerInterface
 
     visualization_msgs::msg::InteractiveMarker           m_marker; //!< Controller handle for RViz
 
+    // Test
+    geometry_msgs::msg::PoseStamped _myPose;
+
 };
 
 } // cartesian_controller_handles

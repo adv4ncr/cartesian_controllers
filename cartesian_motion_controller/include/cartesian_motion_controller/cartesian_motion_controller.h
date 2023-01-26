@@ -44,9 +44,12 @@
 #include <cartesian_controller_base/ROS2VersionConfig.h>
 #include <cartesian_controller_base/cartesian_controller_base.h>
 #include <controller_interface/controller_interface.hpp>
+#include <realtime_tools/realtime_buffer.h>
 
 namespace cartesian_motion_controller
 {
+
+using CmdType = geometry_msgs::msg::PoseStamped;
 
 /**
  * @brief A ROS2-control controller for Cartesian motion tracking
@@ -115,9 +118,15 @@ class CartesianMotionController : public virtual cartesian_controller_base::Cart
     KDL::Frame      m_target_frame;
     KDL::Frame      m_current_frame;
 
-    void targetFrameCallback(const geometry_msgs::msg::PoseStamped::SharedPtr target);
+    void targetFrameCallback(const CmdType::SharedPtr target);
 
-    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr m_target_frame_subscr;
+    // ROS2 subscriber
+    rclcpp::Subscription<CmdType>::SharedPtr m_target_frame_subscr;
+
+    // Realtime buffer
+    realtime_tools::RealtimeBuffer<std::shared_ptr<CmdType>> m_target_frame_buffer;
+    bool _initPos = false;  // TEST
+    CmdType _startPos;  // TEST
 };
 
 }
