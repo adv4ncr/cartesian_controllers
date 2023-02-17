@@ -344,7 +344,7 @@ std::vector<hardware_interface::CommandInterface> CartesianControllerBase::on_ex
   std::vector<hardware_interface::CommandInterface> chainable_command_interfaces;
 
   // Get required size of vector
-  const unsigned short num_chainable_interfaces = m_joint_names.size() * m_cmd_interface_types.size();
+  const unsigned short num_chainable_interfaces = command_interface::axis_names.size() * m_cmd_interface_types.size();
   RCLCPP_WARN(get_node()->get_logger(), "[BASE][on_export_reference_interfaces] num_chainable_interfaces: %hd", num_chainable_interfaces);
 
   // allocate dynamic memory
@@ -355,25 +355,19 @@ std::vector<hardware_interface::CommandInterface> CartesianControllerBase::on_ex
 
   // assign reference interfaces
   uint8_t index = 0;
-  for (const auto & interface : m_cmd_interface_types)
+  for (const auto & axis : command_interface::axis_names)
   {
-    for (const auto & joint : m_joint_names)
-    {
-      if (interface == hardware_interface::HW_IF_POSITION)
-        position_reference_.emplace_back(reference_interfaces_[index]);
-      else if (interface == hardware_interface::HW_IF_VELOCITY)
-      {
-        velocity_reference_.emplace_back(reference_interfaces_[index]);
-      }
-      const auto full_name = joint + "/" + interface;
-      RCLCPP_WARN(get_node()->get_logger(), "[BASE][on_export_reference_interfaces] full_name: %s", full_name.c_str());
 
-      chainable_command_interfaces.emplace_back(hardware_interface::CommandInterface(
-        std::string(get_node()->get_name()), full_name, reference_interfaces_.data() + index));
+    position_reference_.emplace_back(reference_interfaces_[index]);
 
-      index++;
-    }
+    const auto full_name = axis + "/position";
+
+    chainable_command_interfaces.emplace_back(hardware_interface::CommandInterface(
+      std::string(get_node()->get_name()), full_name, reference_interfaces_.data() + index));
+
+    index++;
   }
+  
 
   return chainable_command_interfaces;
 

@@ -85,10 +85,10 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Cartes
     return ret;
   }
 
-  m_target_frame_subscr = get_node()->create_subscription<geometry_msgs::msg::PoseStamped>(
-    get_node()->get_name() + std::string("/target_frame"),
-    3,
-    std::bind(&CartesianMotionController::targetFrameCallback, this, std::placeholders::_1));
+  // m_target_frame_subscr = get_node()->create_subscription<CmdType>(
+  //   get_node()->get_name() + std::string("/target_frame"),
+  //   3,
+  //   std::bind(&CartesianMotionController::targetFrameCallback, this, std::placeholders::_1));
 
   return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
@@ -97,6 +97,9 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Cartes
     const rclcpp_lifecycle::State & previous_state)
 {
   Base::on_activate(previous_state);
+
+  // reset command buffer if a command came through callback when controller was inactive
+  m_target_frame_buffer = realtime_tools::RealtimeBuffer<std::shared_ptr<CmdType>>(nullptr);
 
   // Reset simulation with real joint state
   m_current_frame = Base::m_ik_solver->getEndEffectorPose();
@@ -123,6 +126,38 @@ controller_interface::return_type CartesianMotionController::update_and_write_co
 controller_interface::return_type CartesianMotionController::update_and_write_commands()
 #endif
 {
+
+
+
+  // Get new pose from subscriber
+  // const auto _target = m_target_frame_buffer.readFromRT();
+
+  // // No command received yet
+  // if (!_target || !(*_target))
+  // {
+  //   RCLCPP_WARN_ONCE(get_node()->get_logger(), "[MOTION][update] no command received yet");
+  //   return controller_interface::return_type::OK;
+  // }
+
+  // if(period.nanoseconds() > 4500000)
+  // {
+  //   RCLCPP_WARN(get_node()->get_logger(), "[MOTION][update] last period: %lf", period.nanoseconds()/1e6);
+  // }
+
+  m_target_frame = KDL::Frame(
+      KDL::Rotation::Quaternion(
+        reference_interfaces_[3],
+        reference_interfaces_[4],
+        reference_interfaces_[5],
+        reference_interfaces_[6]),
+      KDL::Vector(
+        reference_interfaces_[0],
+        reference_interfaces_[1],
+        reference_interfaces_[2])
+      );
+        
+
+
   // Synchronize the internal model and the real robot
   Base::m_ik_solver->synchronizeJointPositions(Base::m_joint_state_pos_handles);
 
@@ -205,16 +240,7 @@ void CartesianMotionController::targetFrameCallback(const geometry_msgs::msg::Po
     return;
   }
 
-  m_target_frame = KDL::Frame(
-      KDL::Rotation::Quaternion(
-        target->pose.orientation.x,
-        target->pose.orientation.y,
-        target->pose.orientation.z,
-        target->pose.orientation.w),
-      KDL::Vector(
-        target->pose.position.x,
-        target->pose.position.y,
-        target->pose.position.z));
+  m_target_frame_buffer.writeFromNonRT(target);
 }
 
 // Chainable controller functions

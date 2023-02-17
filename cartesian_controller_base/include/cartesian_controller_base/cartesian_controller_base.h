@@ -60,6 +60,10 @@
 #include <vector>
 #include <hardware_interface/types/hardware_interface_type_values.hpp>
 
+namespace command_interface{
+  inline const std::array<std::string, 7> axis_names = {"p_x","p_y","p_z","r_x","r_y","r_z","r_w"};
+}
+
 namespace cartesian_controller_base
 {
 
@@ -212,6 +216,8 @@ class CartesianControllerBase : public controller_interface::ChainableController
     // Dynamic parameters
     double m_error_scale;
     std::string m_robot_description;
+
+
 };
 
 }

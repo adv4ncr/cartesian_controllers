@@ -46,7 +46,7 @@
 #include <kdl/tree.hpp>
 #include <kdl_parser/kdl_parser.hpp>
 #include <urdf/model.h>
-
+#include "cartesian_controller_base/cartesian_controller_base.h"
 
 namespace cartesian_controller_handles {
 
@@ -57,6 +57,7 @@ MotionControlHandle::~MotionControlHandle() {}
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
 MotionControlHandle::on_activate(const rclcpp_lifecycle::State& previous_state)
 {
+  RCLCPP_WARN(get_node()->get_logger(), "[HANDLE][on_activate] entry. Command Interfaces: %ld", command_interfaces_.size());
   // Get state handles.
   if (!controller_interface::get_ordered_interfaces(
         state_interfaces_, m_joint_names, hardware_interface::HW_IF_POSITION, m_joint_handles))
@@ -91,9 +92,22 @@ controller_interface::return_type MotionControlHandle::update()
 #endif
 {
   // Publish marker pose
-  m_current_pose.header.stamp    = get_node()->now();
-  m_current_pose.header.frame_id = m_robot_base_link;
-  m_pose_publisher->publish(m_current_pose);
+  // m_current_pose.header.stamp    = get_node()->now();
+  // m_current_pose.header.frame_id = m_robot_base_link;
+  // m_pose_publisher->publish(m_current_pose);
+  
+  // See axis_names from cartesian_controller_base/Utility.h
+  if(command_interfaces_.size() == 7)
+  {
+    command_interfaces_[0].set_value(m_current_pose.pose.position.x);
+    command_interfaces_[1].set_value(m_current_pose.pose.position.y);
+    command_interfaces_[2].set_value(m_current_pose.pose.position.z);
+    command_interfaces_[3].set_value(m_current_pose.pose.orientation.x);
+    command_interfaces_[4].set_value(m_current_pose.pose.orientation.y);
+    command_interfaces_[5].set_value(m_current_pose.pose.orientation.z);
+    command_interfaces_[6].set_value(m_current_pose.pose.orientation.w);
+  }
+
   m_server->applyChanges();
 
   return controller_interface::return_type::OK;
@@ -102,14 +116,22 @@ controller_interface::return_type MotionControlHandle::update()
 controller_interface::InterfaceConfiguration
 MotionControlHandle::command_interface_configuration() const
 {
+  RCLCPP_WARN(get_node()->get_logger(), "[HANDLE][command_interface_configuration] entry");
+  const auto base_name = "cartesian_motion_controller/"; // #TODO set as parameter
   controller_interface::InterfaceConfiguration conf;
-  conf.type = controller_interface::interface_configuration_type::NONE;
+  conf.type = controller_interface::interface_configuration_type::INDIVIDUAL;
+  conf.names.reserve(command_interface::axis_names.size()); // Only position
+  for (const auto& axis_name : command_interface::axis_names)
+  {
+    conf.names.push_back(base_name + axis_name + "/position");
+  }
   return conf;
 }
 
 controller_interface::InterfaceConfiguration
 MotionControlHandle::state_interface_configuration() const
 {
+  RCLCPP_WARN(get_node()->get_logger(), "[HANDLE][state_interface_configuration] entry");
   controller_interface::InterfaceConfiguration conf;
   conf.type = controller_interface::interface_configuration_type::INDIVIDUAL;
   conf.names.reserve(m_joint_names.size()); // Only position
@@ -125,6 +147,8 @@ MotionControlHandle::state_interface_configuration() const
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
 MotionControlHandle::on_init()
 {
+  RCLCPP_WARN(get_node()->get_logger(), "[HANDLE][on_init] entry");
+
 #elif defined CARTESIAN_CONTROLLERS_FOXY
 controller_interface::return_type MotionControlHandle::init(const std::string& controller_name)
 {
@@ -151,6 +175,7 @@ controller_interface::return_type MotionControlHandle::init(const std::string& c
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
 MotionControlHandle::on_configure(const rclcpp_lifecycle::State& previous_state)
 {
+  RCLCPP_WARN(get_node()->get_logger(), "[HANDLE][on_configure] entry");
   // Get kinematics specific configuration
   urdf::Model robot_model;
   KDL::Tree robot_tree;
