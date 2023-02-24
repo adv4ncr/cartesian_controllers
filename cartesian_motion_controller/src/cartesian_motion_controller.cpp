@@ -144,7 +144,20 @@ controller_interface::return_type CartesianMotionController::update_and_write_co
   //   RCLCPP_WARN(get_node()->get_logger(), "[MOTION][update] last period: %lf", period.nanoseconds()/1e6);
   // }
 
-  m_target_frame = KDL::Frame(
+  m_use_pref_frame = false;
+  for(size_t i = 0; i < reference_interfaces_.size(); i++)
+  {
+    if(std::isnan(reference_interfaces_[i])) {m_use_pref_frame = true;}
+  }
+
+  if(m_use_pref_frame)
+  {
+    m_target_frame = m_current_frame;
+    RCLCPP_ERROR(get_node()->get_logger(), "[MOTION][update] using previous frame");
+  }
+  else
+  {
+    m_target_frame = KDL::Frame(
       KDL::Rotation::Quaternion(
         reference_interfaces_[3],
         reference_interfaces_[4],
@@ -154,8 +167,14 @@ controller_interface::return_type CartesianMotionController::update_and_write_co
         reference_interfaces_[0],
         reference_interfaces_[1],
         reference_interfaces_[2])
-      );
-        
+    );
+  }
+  
+  // RCLCPP_WARN(get_node()->get_logger(), "[MOTION][update] set pos: %lf %lf %lf", m_target_frame.p.x(), m_target_frame.p.y(), m_target_frame.p.z());
+  // std::array<double, 3> _rpy;
+  // m_target_frame.M.GetRPY(_rpy[0], _rpy[1], _rpy[2]);
+  // RCLCPP_WARN_ONCE(get_node()->get_logger(), "[MOTION][update] set agl: %lf %lf %lf", _rpy[0], _rpy[1], _rpy[2]);
+  
 
 
   // Synchronize the internal model and the real robot

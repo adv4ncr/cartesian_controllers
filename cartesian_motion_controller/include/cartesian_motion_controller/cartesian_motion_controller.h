@@ -123,12 +123,12 @@ class CartesianMotionController : public virtual cartesian_controller_base::Cart
     ctrl::Vector6D        computeMotionError();
     KDL::Frame      m_target_frame;
     KDL::Frame      m_current_frame;
+    bool            m_use_pref_frame;
 
     void targetFrameCallback(const geometry_msgs::msg::PoseStamped::SharedPtr target);
 
     rclcpp::Subscription<CmdType>::SharedPtr m_target_frame_subscr;
     realtime_tools::RealtimeBuffer<std::shared_ptr<CmdType>> m_target_frame_buffer;
-
 };
 
 }

@@ -57,7 +57,7 @@ MotionControlHandle::~MotionControlHandle() {}
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
 MotionControlHandle::on_activate(const rclcpp_lifecycle::State& previous_state)
 {
-  RCLCPP_WARN(get_node()->get_logger(), "[HANDLE][on_activate] entry. Command Interfaces: %ld", command_interfaces_.size());
+  // RCLCPP_WARN(get_node()->get_logger(), "[HANDLE][on_activate] entry. Command Interfaces: %ld", command_interfaces_.size());
   // Get state handles.
   if (!controller_interface::get_ordered_interfaces(
         state_interfaces_, m_joint_names, hardware_interface::HW_IF_POSITION, m_joint_handles))
