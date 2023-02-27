@@ -57,7 +57,7 @@ MotionControlHandle::~MotionControlHandle() {}
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
 MotionControlHandle::on_activate(const rclcpp_lifecycle::State& previous_state)
 {
-  // RCLCPP_WARN(get_node()->get_logger(), "[HANDLE][on_activate] entry. Command Interfaces: %ld", command_interfaces_.size());
+  RCLCPP_INFO(get_node()->get_logger(), "[HANDLE][on_activate] entry. Command Interfaces: %ld", command_interfaces_.size());
   // Get state handles.
   if (!controller_interface::get_ordered_interfaces(
         state_interfaces_, m_joint_names, hardware_interface::HW_IF_POSITION, m_joint_handles))
@@ -116,7 +116,7 @@ controller_interface::return_type MotionControlHandle::update()
 controller_interface::InterfaceConfiguration
 MotionControlHandle::command_interface_configuration() const
 {
-  RCLCPP_WARN(get_node()->get_logger(), "[HANDLE][command_interface_configuration] entry");
+  RCLCPP_INFO(get_node()->get_logger(), "[HANDLE][command_interface_configuration] entry");
   const auto base_name = "cartesian_motion_controller/"; // #TODO set as parameter
   controller_interface::InterfaceConfiguration conf;
   conf.type = controller_interface::interface_configuration_type::INDIVIDUAL;
@@ -131,7 +131,7 @@ MotionControlHandle::command_interface_configuration() const
 controller_interface::InterfaceConfiguration
 MotionControlHandle::state_interface_configuration() const
 {
-  RCLCPP_WARN(get_node()->get_logger(), "[HANDLE][state_interface_configuration] entry");
+  RCLCPP_INFO(get_node()->get_logger(), "[HANDLE][state_interface_configuration] entry");
   controller_interface::InterfaceConfiguration conf;
   conf.type = controller_interface::interface_configuration_type::INDIVIDUAL;
   conf.names.reserve(m_joint_names.size()); // Only position
@@ -147,7 +147,7 @@ MotionControlHandle::state_interface_configuration() const
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
 MotionControlHandle::on_init()
 {
-  RCLCPP_WARN(get_node()->get_logger(), "[HANDLE][on_init] entry");
+  RCLCPP_INFO(get_node()->get_logger(), "[HANDLE][on_init] entry");
 
 #elif defined CARTESIAN_CONTROLLERS_FOXY
 controller_interface::return_type MotionControlHandle::init(const std::string& controller_name)
@@ -175,7 +175,7 @@ controller_interface::return_type MotionControlHandle::init(const std::string& c
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
 MotionControlHandle::on_configure(const rclcpp_lifecycle::State& previous_state)
 {
-  RCLCPP_WARN(get_node()->get_logger(), "[HANDLE][on_configure] entry");
+  RCLCPP_INFO(get_node()->get_logger(), "[HANDLE][on_configure] entry");
   // Get kinematics specific configuration
   urdf::Model robot_model;
   KDL::Tree robot_tree;
