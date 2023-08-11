@@ -45,7 +45,7 @@
 #include "cartesian_controller_base/cartesian_controller_base.h"
 //#include <controller_interface/controller_interface.hpp>
 #include <controller_interface/chainable_controller_interface.hpp>
-#include <realtime_tools/realtime_buffer.h>
+// #include <realtime_tools/realtime_buffer.h>
 
 namespace cartesian_motion_controller
 {
@@ -128,7 +128,7 @@ class CartesianMotionController : public virtual cartesian_controller_base::Cart
     void targetFrameCallback(const geometry_msgs::msg::PoseStamped::SharedPtr target);
 
     rclcpp::Subscription<CmdType>::SharedPtr m_target_frame_subscr;
-    realtime_tools::RealtimeBuffer<std::shared_ptr<CmdType>> m_target_frame_buffer;
+    //realtime_tools::RealtimeBuffer<std::shared_ptr<CmdType>> m_target_frame_buffer;
 };
 
 }

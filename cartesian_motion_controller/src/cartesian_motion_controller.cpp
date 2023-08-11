@@ -99,7 +99,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Cartes
   Base::on_activate(previous_state);
 
   // reset command buffer if a command came through callback when controller was inactive
-  m_target_frame_buffer = realtime_tools::RealtimeBuffer<std::shared_ptr<CmdType>>(nullptr);
+  //m_target_frame_buffer = realtime_tools::RealtimeBuffer<std::shared_ptr<CmdType>>(nullptr);
 
   // Reset simulation with real joint state
   m_current_frame = Base::m_ik_solver->getEndEffectorPose();
@@ -246,21 +246,21 @@ computeMotionError()
   return error;
 }
 
-void CartesianMotionController::targetFrameCallback(const geometry_msgs::msg::PoseStamped::SharedPtr target)
-{
-  if (target->header.frame_id != Base::m_robot_base_link)
-  {
-    auto& clock = *get_node()->get_clock();
-    RCLCPP_WARN_THROTTLE(get_node()->get_logger(),
-        clock, 3000,
-        "Got target pose in wrong reference frame. Expected: %s but got %s",
-        Base::m_robot_base_link.c_str(),
-        target->header.frame_id.c_str());
-    return;
-  }
+// void CartesianMotionController::targetFrameCallback(const geometry_msgs::msg::PoseStamped::SharedPtr target)
+// {
+//   if (target->header.frame_id != Base::m_robot_base_link)
+//   {
+//     auto& clock = *get_node()->get_clock();
+//     RCLCPP_WARN_THROTTLE(get_node()->get_logger(),
+//         clock, 3000,
+//         "Got target pose in wrong reference frame. Expected: %s but got %s",
+//         Base::m_robot_base_link.c_str(),
+//         target->header.frame_id.c_str());
+//     return;
+//   }
 
-  m_target_frame_buffer.writeFromNonRT(target);
-}
+//   m_target_frame_buffer.writeFromNonRT(target);
+// }
 
 // Chainable controller functions
 
