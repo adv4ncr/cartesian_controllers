@@ -47,10 +47,11 @@
 #include <controller_interface/chainable_controller_interface.hpp>
 // #include <realtime_tools/realtime_buffer.h>
 
+#include "geometry_msgs/msg/pose_stamped.hpp"
+
 namespace cartesian_motion_controller
 {
 
-using CmdType = geometry_msgs::msg::PoseStamped;
 
 /**
  * @brief A ROS2-control controller for Cartesian motion tracking
@@ -76,39 +77,44 @@ using CmdType = geometry_msgs::msg::PoseStamped;
  */
 class CartesianMotionController : public virtual cartesian_controller_base::CartesianControllerBase
 {
-  public:
-    CartesianMotionController();
-    virtual ~CartesianMotionController() = default;
+public:
+  CartesianMotionController();
+  virtual ~CartesianMotionController() = default;
 
-#if defined CARTESIAN_CONTROLLERS_GALACTIC || defined CARTESIAN_CONTROLLERS_HUMBLE
-    virtual LifecycleNodeInterface::CallbackReturn on_init() override;
+#if defined CARTESIAN_CONTROLLERS_GALACTIC || defined CARTESIAN_CONTROLLERS_HUMBLE || \
+  defined CARTESIAN_CONTROLLERS_IRON
+  virtual LifecycleNodeInterface::CallbackReturn on_init() override;
 #elif defined CARTESIAN_CONTROLLERS_FOXY
-    virtual controller_interface::return_type init(const std::string & controller_name) override;
+  virtual controller_interface::return_type init(const std::string & controller_name) override;
 #endif
 
-    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_configure(
-        const rclcpp_lifecycle::State & previous_state) override;
+  rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_configure(
+    const rclcpp_lifecycle::State & previous_state) override;
 
-    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_activate(
-        const rclcpp_lifecycle::State & previous_state) override;
+  rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_activate(
+    const rclcpp_lifecycle::State & previous_state) override;
 
-    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_deactivate(
-        const rclcpp_lifecycle::State & previous_state) override;
+  rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_deactivate(
+    const rclcpp_lifecycle::State & previous_state) override;
 
 // Chained controller functions
-#if defined CARTESIAN_CONTROLLERS_GALACTIC || defined CARTESIAN_CONTROLLERS_HUMBLE
+#if defined CARTESIAN_CONTROLLERS_GALACTIC || defined CARTESIAN_CONTROLLERS_HUMBLE || \
+  defined CARTESIAN_CONTROLLERS_IRON
     controller_interface::return_type update_and_write_commands(const rclcpp::Time & time, const rclcpp::Duration & period) override;
 #elif defined CARTESIAN_CONTROLLERS_FOXY
     controller_interface::return_type update_and_write_commands() override;
 #endif
 
-    using Base = cartesian_controller_base::CartesianControllerBase;
+  using Base = cartesian_controller_base::CartesianControllerBase;
 
   protected:
 
     bool on_set_chained_mode(bool chained_mode) override;
     //std::vector<hardware_interface::CommandInterface> on_export_reference_interfaces() override;
-    controller_interface::return_type update_reference_from_subscribers() override;
+    // controller_interface::return_type update_reference_from_subscribers() override;
+    controller_interface::return_type update_reference_from_subscribers(const rclcpp::Time &time, const rclcpp::Duration &period) override;
+  
+    
 
     /**
      * @brief Compute the offset between a target pose and the current end effector pose
@@ -125,13 +131,11 @@ class CartesianMotionController : public virtual cartesian_controller_base::Cart
     KDL::Frame      m_current_frame;
     bool            m_use_pref_frame;
 
-    void targetFrameCallback(const geometry_msgs::msg::PoseStamped::SharedPtr target);
+  void targetFrameCallback(const geometry_msgs::msg::PoseStamped::SharedPtr target);
 
-    rclcpp::Subscription<CmdType>::SharedPtr m_target_frame_subscr;
-    //realtime_tools::RealtimeBuffer<std::shared_ptr<CmdType>> m_target_frame_buffer;
+  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr m_target_frame_subscr;
 };
 
-}
-
+}  // namespace cartesian_motion_controller
 
 #endif

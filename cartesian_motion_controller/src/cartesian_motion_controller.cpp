@@ -37,23 +37,24 @@
  */
 //-----------------------------------------------------------------------------
 
+#include <cartesian_motion_controller/cartesian_motion_controller.h>
+
+#include <algorithm>
+#include <cmath>
+
 #include "cartesian_controller_base/Utility.h"
 #include "controller_interface/controller_interface.hpp"
 #include "rclcpp/clock.hpp"
 #include "rclcpp/duration.hpp"
-#include <algorithm>
-#include <cartesian_motion_controller/cartesian_motion_controller.h>
 
 namespace cartesian_motion_controller
 {
+CartesianMotionController::CartesianMotionController() : Base::CartesianControllerBase() {}
 
-CartesianMotionController::CartesianMotionController()
-: Base::CartesianControllerBase()
-{
-}
-
-#if defined CARTESIAN_CONTROLLERS_GALACTIC || defined CARTESIAN_CONTROLLERS_HUMBLE
-rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn CartesianMotionController::on_init()
+#if defined CARTESIAN_CONTROLLERS_GALACTIC || defined CARTESIAN_CONTROLLERS_HUMBLE || \
+  defined CARTESIAN_CONTROLLERS_IRON
+rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+CartesianMotionController::on_init()
 {
   const auto ret = Base::on_init();
   if (ret != rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS)
@@ -64,7 +65,8 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Cartes
   return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
 #elif defined CARTESIAN_CONTROLLERS_FOXY
-controller_interface::return_type CartesianMotionController::init(const std::string & controller_name)
+controller_interface::return_type CartesianMotionController::init(
+  const std::string & controller_name)
 {
   const auto ret = Base::init(controller_name);
   if (ret != controller_interface::return_type::OK)
@@ -76,8 +78,8 @@ controller_interface::return_type CartesianMotionController::init(const std::str
 }
 #endif
 
-rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn CartesianMotionController::on_configure(
-    const rclcpp_lifecycle::State & previous_state)
+rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+CartesianMotionController::on_configure(const rclcpp_lifecycle::State & previous_state)
 {
   const auto ret = Base::on_configure(previous_state);
   if (ret != rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS)
@@ -93,8 +95,8 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Cartes
   return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
 
-rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn CartesianMotionController::on_activate(
-    const rclcpp_lifecycle::State & previous_state)
+rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+CartesianMotionController::on_activate(const rclcpp_lifecycle::State & previous_state)
 {
   Base::on_activate(previous_state);
 
@@ -109,17 +111,15 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Cartes
   return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
 
-rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn CartesianMotionController::on_deactivate(
-    const rclcpp_lifecycle::State & previous_state)
+rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+CartesianMotionController::on_deactivate(const rclcpp_lifecycle::State & previous_state)
 {
-  // Stop drifting by sending zero joint velocities
-  Base::computeJointControlCmds(ctrl::Vector6D::Zero(), rclcpp::Duration::from_seconds(0));
-  Base::writeJointControlCmds();
   Base::on_deactivate(previous_state);
   return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
 
-#if defined CARTESIAN_CONTROLLERS_GALACTIC || defined CARTESIAN_CONTROLLERS_HUMBLE
+#if defined CARTESIAN_CONTROLLERS_GALACTIC || defined CARTESIAN_CONTROLLERS_HUMBLE || \
+  defined CARTESIAN_CONTROLLERS_IRON
 controller_interface::return_type CartesianMotionController::update_and_write_commands(const rclcpp::Time& time,
                                                                    const rclcpp::Duration& period)
 #elif defined CARTESIAN_CONTROLLERS_FOXY
@@ -194,7 +194,7 @@ controller_interface::return_type CartesianMotionController::update_and_write_co
     ctrl::Vector6D error = computeMotionError();
 
     // Turn Cartesian error into joint motion
-    Base::computeJointControlCmds(error,internal_period);
+    Base::computeJointControlCmds(error, internal_period);
   }
 
   // Write final commands to the hardware interface
@@ -203,8 +203,7 @@ controller_interface::return_type CartesianMotionController::update_and_write_co
   return controller_interface::return_type::OK;
 }
 
-ctrl::Vector6D CartesianMotionController::
-computeMotionError()
+ctrl::Vector6D CartesianMotionController::computeMotionError()
 {
   // Compute motion error wrt robot_base_link
   m_current_frame = Base::m_ik_solver->getEndEffectorPose();
@@ -217,7 +216,7 @@ computeMotionError()
   // Use Rodrigues Vector for a compact representation of orientation errors
   // Only for angles within [0,Pi)
   KDL::Vector rot_axis = KDL::Vector::Zero();
-  double angle    = error_kdl.M.GetRotAngle(rot_axis);   // rot_axis is normalized
+  double angle = error_kdl.M.GetRotAngle(rot_axis);  // rot_axis is normalized
   double distance = error_kdl.p.Normalize();
 
   // Clamp maximal tolerated error.
@@ -227,8 +226,8 @@ computeMotionError()
   // wrench.
   const double max_angle = 1.0;
   const double max_distance = 1.0;
-  angle    = std::clamp(angle,-max_angle,max_angle);
-  distance = std::clamp(distance,-max_distance,max_distance);
+  angle = std::clamp(angle, -max_angle, max_angle);
+  distance = std::clamp(distance, -max_distance, max_distance);
 
   // Scale errors to allowed magnitudes
   rot_axis = rot_axis * angle;
@@ -246,22 +245,6 @@ computeMotionError()
   return error;
 }
 
-// void CartesianMotionController::targetFrameCallback(const geometry_msgs::msg::PoseStamped::SharedPtr target)
-// {
-//   if (target->header.frame_id != Base::m_robot_base_link)
-//   {
-//     auto& clock = *get_node()->get_clock();
-//     RCLCPP_WARN_THROTTLE(get_node()->get_logger(),
-//         clock, 3000,
-//         "Got target pose in wrong reference frame. Expected: %s but got %s",
-//         Base::m_robot_base_link.c_str(),
-//         target->header.frame_id.c_str());
-//     return;
-//   }
-
-//   m_target_frame_buffer.writeFromNonRT(target);
-// }
-
 // Chainable controller functions
 
 bool CartesianMotionController::on_set_chained_mode(bool chained_mode)
@@ -271,12 +254,46 @@ bool CartesianMotionController::on_set_chained_mode(bool chained_mode)
   return true;
 }
 
-controller_interface::return_type CartesianMotionController::update_reference_from_subscribers()
-{
+controller_interface::return_type CartesianMotionController::update_reference_from_subscribers(const rclcpp::Time &time, const rclcpp::Duration &period) {
+  RCLCPP_WARN(get_node()->get_logger(), "UNIMPLEMENTED FUNCTION: update_reference_from_subscribers");
   return controller_interface::return_type::OK;
 }
 
-} // namespace
+// void CartesianMotionController::targetFrameCallback(
+//   const geometry_msgs::msg::PoseStamped::SharedPtr target)
+// {
+//   if (!this->isActive())
+//   {
+//     return;
+//   }
+
+//   if (std::isnan(target->pose.position.x) || std::isnan(target->pose.position.y) ||
+//       std::isnan(target->pose.position.z) || std::isnan(target->pose.orientation.x) ||
+//       std::isnan(target->pose.orientation.y) || std::isnan(target->pose.orientation.z) ||
+//       std::isnan(target->pose.orientation.w))
+//   {
+//     auto & clock = *get_node()->get_clock();
+//     RCLCPP_WARN_STREAM_THROTTLE(get_node()->get_logger(), clock, 3000,
+//                                 "NaN detected in target pose. Ignoring input.");
+//     return;
+//   }
+
+//   if (target->header.frame_id != Base::m_robot_base_link)
+//   {
+//     auto & clock = *get_node()->get_clock();
+//     RCLCPP_WARN_THROTTLE(get_node()->get_logger(), clock, 3000,
+//                          "Got target pose in wrong reference frame. Expected: %s but got %s",
+//                          Base::m_robot_base_link.c_str(), target->header.frame_id.c_str());
+//     return;
+//   }
+
+//   m_target_frame = KDL::Frame(
+//     KDL::Rotation::Quaternion(target->pose.orientation.x, target->pose.orientation.y,
+//                               target->pose.orientation.z, target->pose.orientation.w),
+//     KDL::Vector(target->pose.position.x, target->pose.position.y, target->pose.position.z));
+// }
+
+}  // namespace cartesian_motion_controller
 
 // Pluginlib
 #include <pluginlib/class_list_macros.hpp>
